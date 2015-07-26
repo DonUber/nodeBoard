@@ -99,6 +99,7 @@ var ai = {
 
 function createGame(p1, p2, config){
     var game = {
+        id : 0,
         gameName : "",
         current_round : 1,
         total_rounds: 1,
@@ -131,6 +132,10 @@ function createGame(p1, p2, config){
 
 function createTournament(){
 
+}
+
+function random (low, high) {
+    return Math.floor(Math.random() * (high - low + 1) + low);
 }
 
 function gameLoop(){
@@ -193,17 +198,31 @@ var move_callback = function(bestmove){
         if(current_game.board.in_checkmate() == true && current_game.board.turn() == 'b'){
             console.log("Info: end checkmate w wins");
             result = 'ww';
+            current_game.board.header('Result', '1-0');
         }else if(current_game.board.in_checkmate() == true && current_game.board.turn() == 'w'){
             console.log("Info: end checkmate b wins");
             result = 'bw';
+            current_game.board.header('Result', '0-1');
         }else if(current_game.board.in_stalemate() == true){
             console.log("Info: end stalemate");
+            current_game.board.header('Result', '1/2-1/2');
         }else if(current_game.board.in_draw() == true){
             console.log("Info: end draw");
+            current_game.board.header('Result', '1/2-1/2');
         }else if(current_game.board.in_threefold_repetition() == true){
             console.log("Info: end threefold");
+            current_game.board.header('Result', '1/2-1/2');
         }
         current_game.running = 0;
+        if(config.options.save_pgn){
+            var fname = date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
+            fs.writeFile(fname, current_game.board.pgn(), function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                console.log("Info: pgn saved "+fname);
+            });
+        }
         next(result);
     }
     if(current_game.running == 1){
@@ -224,8 +243,9 @@ p2.path = config.p2.path;
 p1.name = config.p1.name;
 p2.name = config.p2.name;
 var current_game = createGame(p1, p2, config);
+current_game.id = random(1000,9999);
 current_game.board = chess();
 current_game.running = 1;
-current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round);
+current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
 gameLoop();
 
