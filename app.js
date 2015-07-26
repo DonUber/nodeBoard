@@ -1,5 +1,9 @@
 /*
  app.js
+ TODO: timing and clock implementation
+ TODO: Game result handling
+ TODO: Extract further information from console output
+ TODO: Implementation of tournaments and more players
  */
 
 var ai = {
