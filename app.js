@@ -37,9 +37,6 @@ var ai = {
             child.stderr.on('data', function(data) {
                 console.log("Error: " + data);
             });
-            child.on('exit', function (exitCode){
-                console.log("Child exited with code: " + exitCode);
-            });
         }catch(err){
             console.log("Error:" + err);
         }
@@ -54,18 +51,28 @@ var ai = {
             var child = require('child_process').spawn(this.path);
             var response = "";
             child.stdin.write("position fen " + current_game.board.fen() + "\n");
-
-            if(mode.toString().indexOf("depth") > -1){
+            var start = new Date();
+            var end;
+            if(current_game.mode.toString().indexOf("depth") > -1){
                 child.stdin.write("go depth " + current_game.depth + "\n");
-            }else if(mode.toString().indexOf("movetime") > -1){
+            }else if(current_game.mode.toString().indexOf("movetime") > -1){
                 child.stdin.write("go movetime " + current_game.movetime + "\n");
-            }else if(mode.toString().indexOf("time") > -1){
+            }else if(current_game.mode.toString().indexOf("time") > -1){
                 child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
             }
 
             child.stdout.on('data', function(data) {
                 response = data.toString();
                 if(response.indexOf("bestmove") > -1){
+                    end = new Date() - start;
+                    console.log('Info: turn ' + current_game.board.turn());
+                    if(current_game.board.turn() == 'w' && current_game.mode.toString().indexOf("time") > -1){
+                        current_game.wtime = current_game.wtime - end;
+                        console.log('Info: wtime ' + current_game.wtime);
+                    }else if(current_game.board.turn() == 'b' && current_game.mode.toString().indexOf("time") > -1){
+                        current_game.btime = current_game.btime - end;
+                        console.log('Info: btime ' + current_game.btime);
+                    }
                     var arr_response = response.split("\n");
                     var response_part;
                     for(response_part in arr_response){
@@ -81,13 +88,10 @@ var ai = {
                 }
             });
             child.stderr.on('data', function(data) {
-                console.log("Error:" + data);
-            });
-            child.on('exit', function (exitCode){
-                console.log("Child exited with code" + exitCode);
+                console.log("Error: " + data);
             });
         }catch(err){
-            console.log("Error:" + err);
+            console.log("Error: " + err);
         }
     }
 
@@ -99,6 +103,7 @@ function createGame(p1, p2, config){
         current_round : 1,
         total_rounds: 1,
         mode: "movetime",
+        movetime: 1000,
         depth: 6,
         wtime : 0,
         btime : 0,
@@ -128,7 +133,20 @@ function createTournament(){
 
 }
 
+function gameLoop(){
+    if(current_game.turn % 2 == 1){
+        p1.go(current_game, move_callback);
+    }else{
+        p2.go(current_game, move_callback);
+    }
+}
+
+function next(result) {
+
+}
+
 var move_callback = function(bestmove){
+    console.log('Info: move ' + bestmove);
     var from  = bestmove.slice(0,2);
     var to = bestmove.slice(2,bestmove.length);
     var move_error = new Error('MoveFailed');
@@ -141,7 +159,7 @@ var move_callback = function(bestmove){
         }else if (bestmove == 'e8g8' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O');
         }else if (bestmove == 'e8c8' && current_game.board.get(from).type == 'k'){
-            ret = urrent_game.board.move('O-O-O');
+            ret = current_game.board.move('O-O-O');
         }else if(current_game.board.get(from).type == 'p'){
             if(current_game.board.get(to) == null){
                 ret = current_game.board.move(to);
@@ -155,7 +173,6 @@ var move_callback = function(bestmove){
                     ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + to);
                 }
             } else {
-                console.log("Move " + current_game.board.get(from).type + 'x' + to);
                 ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + 'x' + to);
                 if (ret == null) {
                     ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to);
@@ -169,37 +186,46 @@ var move_callback = function(bestmove){
         console.log("Error: " + err);
     }
     current_game.turn = current_game.turn + 1;
-    console.log(current_game.board.ascii());
-    console.log(current_game.board.fen());
-    if(current_game.board.in_checkmate() == true || current_game.board.in_draw() == true || current_game.board.in_stalemate() == true || current_game.board.in_threefold_repetition() == true){
-        console.log("Game Ended!");
-        if(current_game.board.in_checkmate() == true){
-            console.log("Checkmate!");
+    //console.log(current_game.board.ascii());
+    console.log('Info: fen ' + current_game.board.fen());
+    if(current_game.board.game_over() == true){
+        var result = 'd';
+        if(current_game.board.in_checkmate() == true && current_game.board.turn() == 'b'){
+            console.log("Info: end checkmate w wins");
+            result = 'ww';
+        }else if(current_game.board.in_checkmate() == true && current_game.board.turn() == 'w'){
+            console.log("Info: end checkmate b wins");
+            result = 'bw';
+        }else if(current_game.board.in_stalemate() == true){
+            console.log("Info: end stalemate");
+        }else if(current_game.board.in_draw() == true){
+            console.log("Info: end draw");
+        }else if(current_game.board.in_threefold_repetition() == true){
+            console.log("Info: end threefold");
         }
         current_game.running = 0;
+        next(result);
     }
     if(current_game.running == 1){
         gameLoop();
     }
 };
 
-var Chess = require('chess.js').Chess;
+var chess = require('chess.js').Chess;
+var moment = require('moment');
 var fs = require('fs');
+var date = moment();
+var today = date.format('DD-MM-YYYY');
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 var p1 = Object.create(ai);
 var p2 = Object.create(ai);
 p1.path = config.p1.path;
 p2.path = config.p2.path;
+p1.name = config.p1.name;
+p2.name = config.p2.name;
 var current_game = createGame(p1, p2, config);
-current_game.board = Chess();
+current_game.board = chess();
 current_game.running = 1;
+current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round);
 gameLoop();
-
-function gameLoop(){
-    if(current_game.turn % 2 == 1){
-        p1.go(current_game, move_callback);
-    }else{
-        p2.go(current_game, move_callback);
-    }
-}
 
