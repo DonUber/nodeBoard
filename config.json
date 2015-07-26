@@ -1,0 +1,21 @@
+{ "p2": {
+  "name": "Jazz",
+  "path": "/Users/danielkreiter/Documents/Development/Chess/Engines/jazz-r501-uci/MacOSX/jazz-r501-uci"
+  },
+
+  "p1": {
+    "name": "Stockfish",
+    "path": "/Users/danielkreiter/Documents/Development/Chess/Engines/stockfish-5-mac/Mac/stockfish-5-sse42"
+  },
+
+  "game": {
+    "gameName": "Research",
+    "mode": "time",
+    "total_rounds": 10,
+    "btime": 10000,
+    "wtime": 10000,
+    "movetime": 0,
+    "inc": 0,
+    "depth": 0
+}}
+
