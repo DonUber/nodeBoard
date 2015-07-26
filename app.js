@@ -38,7 +38,7 @@ var ai = {
                 console.log("Error: " + data);
             });
             child.on('exit', function (exitCode){
-                console.log("Child exited with code" + exitCode);
+                console.log("Child exited with code: " + exitCode);
             });
         }catch(err){
             console.log("Error:" + err);
@@ -49,23 +49,22 @@ var ai = {
             console.log("Error:" + err);
         }
     },
-    go : function (fen, mode, depth, btime, wtime, movetime, callback){
+    go : function (current_game, callback){
         try{
             var child = require('child_process').spawn(this.path);
             var response = "";
-            child.stdin.write("position fen " + fen + "\n");
+            child.stdin.write("position fen " + current_game.board.fen() + "\n");
 
             if(mode.toString().indexOf("depth") > -1){
-                child.stdin.write("go depth " + depth + "\n");
+                child.stdin.write("go depth " + current_game.depth + "\n");
             }else if(mode.toString().indexOf("movetime") > -1){
-                child.stdin.write("go movetime " + movetime + "\n");
+                child.stdin.write("go movetime " + current_game.movetime + "\n");
             }else if(mode.toString().indexOf("time") > -1){
-                child.stdin.write("go btime " + btime + " wtime " + wtime + "\n");
+                child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
             }
 
             child.stdout.on('data', function(data) {
                 response = data.toString();
-                //console.log(response);
                 if(response.indexOf("bestmove") > -1){
                     var arr_response = response.split("\n");
                     var response_part;
@@ -82,12 +81,11 @@ var ai = {
                 }
             });
             child.stderr.on('data', function(data) {
-                return 0;
+                console.log("Error:" + data);
             });
-            /*child.on('exit', function (exitCode){
-             console.log("Child exited with code" + exitCode);
-             return 0;
-             });*/
+            child.on('exit', function (exitCode){
+                console.log("Child exited with code" + exitCode);
+            });
         }catch(err){
             console.log("Error:" + err);
         }
@@ -119,6 +117,7 @@ function createGame(p1, p2, config){
     game.btime = config.game.btime;
     game.wtime = config.game.wtime;
     game.inc = config.game.inc;
+    game.movetime = config.game.movetime;
     game.p1_name = config.p1.name;
     game.p2_name = config.p2.name;
     game.mode = config.game.mode;
@@ -198,9 +197,9 @@ gameLoop();
 
 function gameLoop(){
     if(current_game.turn % 2 == 1){
-        p1.go(current_game.board.fen(), "movetime", 7, 0, 0, 1000, move_callback);
+        p1.go(current_game, move_callback);
     }else{
-        p2.go(current_game.board.fen(), "movetime", 7, 0, 0, 1000, move_callback);
+        p2.go(current_game, move_callback);
     }
 }
 
