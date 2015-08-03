@@ -3,7 +3,6 @@
  */
 
 var ai = {
-
     uci : function (req, callback) {
         try{
             var child = require('child_process').spawn(this.path);
@@ -47,6 +46,7 @@ var ai = {
             // Start up child process
             var child = require('child_process').spawn(this.path);
             var response = "";
+            var current_cp = undefined;
             // Write fen to UCI engine
             child.stdin.write("position fen " + current_game.board.fen() + "\n");
             // Get starting moment
@@ -63,8 +63,27 @@ var ai = {
             // Receive the returned data
             child.stdout.on('data', function(data) {
                 response = data.toString();
+                // Extract score data
+                if(response.indexOf("cp") > -1 && current_cp == undefined){
+                    var arr_response = response.split("\n");
+                    var response_part;
+
+                    for(response_part in arr_response){
+                        var arr_response_parts = arr_response[response_part].split(" ");
+                        if(current_cp == undefined){
+                            for(var i =0; i < arr_response_parts.length; i++){
+                                if(arr_response_parts[i].indexOf("cp") > -1){
+                                    current_cp = arr_response_parts[i+1];
+                                    console.log('Info: cp ' + current_game.board.turn() + current_cp);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 // Check if there is already a bestmove in the data
                 if(response.indexOf("bestmove") > -1){
+                    // Get end time
                     end = new Date() - start;
                     console.log('Info: turn ' + current_game.board.turn());
                     if(current_game.board.turn() == 'w' && current_game.mode.toString().indexOf("time") > -1){
@@ -77,6 +96,7 @@ var ai = {
                     //Extract bestmove from the data
                     var arr_response = response.split("\n");
                     var response_part;
+
                     for(response_part in arr_response){
                         var arr_response_parts = arr_response[response_part].split(" ");
                         if(arr_response_parts[0].indexOf("bestmove") > -1){
@@ -277,18 +297,14 @@ function play(round){
 var chess = require('chess.js').Chess;
 var moment = require('moment');
 var fs = require('fs');
-
 // Date
 var date = moment();
 var today = date.format('DD-MM-YYYY');
-
 // Load config JSON
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
-
 // Init vars
 var current_game;
 var round;
-
 // Create and init objects for players
 var p1 = Object.create(ai);
 var p2 = Object.create(ai);
@@ -296,6 +312,5 @@ p1.path = config.p1.path;
 p2.path = config.p2.path;
 p1.name = config.p1.name;
 p2.name = config.p2.name;
-
 // Start it up!
 play(1);
