@@ -1,6 +1,5 @@
 /*
  app.js
- TODO: timing and clock implementation
  TODO: Game result handling
  TODO: Extract further information from console output
  TODO: Implementation of tournaments and more players
@@ -111,7 +110,6 @@ function createGame(p1, p2, config){
         inc : 0,
         p1_name : "Player 1",
         p2_name : "Player 2",
-        fen : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         running : 0,
         moves : [],
         board : null,
@@ -147,13 +145,21 @@ function gameLoop(){
 }
 
 function next(result) {
-
+    if(current_game.current_round < current_game.total_rounds){
+        round = current_game.current_round + 1;
+        current_game.board.reset();
+        play(round);
+    }
 }
 
 var move_callback = function(bestmove){
     console.log('Info: move ' + bestmove);
     var from  = bestmove.slice(0,2);
-    var to = bestmove.slice(2,bestmove.length);
+    var to = bestmove.slice(2,4);
+    var promo = "";
+    if(bestmove.length == 5) {
+        promo = '='+bestmove[4].toUpperCase();
+    }
     var move_error = new Error('MoveFailed');
     var ret = null;
     try{
@@ -166,10 +172,12 @@ var move_callback = function(bestmove){
         }else if (bestmove == 'e8c8' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O-O');
         }else if(current_game.board.get(from).type == 'p'){
-            if(current_game.board.get(to) == null){
-                ret = current_game.board.move(to);
+            var fen = current_game.board.fen();
+            var enpas = fen.split(" ")[3];
+            if(current_game.board.get(to) == null && to != enpas){
+                ret = current_game.board.move(to + promo);
             }else{
-                ret = current_game.board.move(bestmove.slice(0,1) + 'x' + to);
+                ret = current_game.board.move(bestmove.slice(0,1) + 'x' + to + promo);
             }
         }else {
             if (current_game.board.get(to) == null) {
@@ -180,7 +188,7 @@ var move_callback = function(bestmove){
             } else {
                 ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + 'x' + to);
                 if (ret == null) {
-                    ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to);
+                    ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to );
                 }
             }
         }
@@ -191,7 +199,6 @@ var move_callback = function(bestmove){
         console.log("Error: " + err);
     }
     current_game.turn = current_game.turn + 1;
-    //console.log(current_game.board.ascii());
     console.log('Info: fen ' + current_game.board.fen());
     if(current_game.board.game_over() == true){
         var result = 'd';
@@ -215,20 +222,29 @@ var move_callback = function(bestmove){
         }
         current_game.running = 0;
         if(config.options.save_pgn){
-            var fname = date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
+            var fname = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
             fs.writeFile(fname, current_game.board.pgn(), function(err) {
                 if(err) {
                     return console.log(err);
                 }
                 console.log("Info: pgn saved "+fname);
+                next(result);
             });
         }
-        next(result);
-    }
-    if(current_game.running == 1){
+    }else if(current_game.running == 1){
         gameLoop();
     }
 };
+
+function play(round){
+    current_game = createGame(p1, p2, config);
+    current_game.id = random(1000,9999);
+    current_game.board = chess();
+    current_game.running = 1;
+    current_game.current_round = round;
+    current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
+    gameLoop();
+}
 
 var chess = require('chess.js').Chess;
 var moment = require('moment');
@@ -236,16 +252,13 @@ var fs = require('fs');
 var date = moment();
 var today = date.format('DD-MM-YYYY');
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+var current_game;
+var round;
 var p1 = Object.create(ai);
 var p2 = Object.create(ai);
 p1.path = config.p1.path;
 p2.path = config.p2.path;
 p1.name = config.p1.name;
 p2.name = config.p2.name;
-var current_game = createGame(p1, p2, config);
-current_game.id = random(1000,9999);
-current_game.board = chess();
-current_game.running = 1;
-current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
-gameLoop();
 
+play(1);
