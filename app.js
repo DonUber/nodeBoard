@@ -74,7 +74,12 @@ var ai = {
                             for(var i =0; i < arr_response_parts.length; i++){
                                 if(arr_response_parts[i].indexOf("cp") > -1){
                                     current_cp = arr_response_parts[i+1];
-                                    console.log('Info: cp ' + current_game.board.turn() + current_cp);
+                                    console.log('Info: cp ' + current_game.board.turn() + ' ' + current_cp);
+                                    if(current_game.board.turn().indexOf("w") > -1) {
+                                        cpdata[0].push(current_cp);
+                                    }else{
+                                        cpdata[1].push(current_cp);
+                                    }
                                     break;
                                 }
                             }
@@ -173,17 +178,19 @@ function next(result) {
     // To next round if still rounds to go
     if(current_game.current_round < current_game.total_rounds){
         round = current_game.current_round + 1;
+        if(sideswitch==1){sideswitch=0}else{sideswitch=1}
         play(round);
     }
 }
 
 var move_callback = function(bestmove){
-    console.log('Info: move ' + bestmove);
     // Extract info from bestmove response
+    console.log('Info: move ' + bestmove);
     var from  = bestmove.slice(0,2);
     var to = bestmove.slice(2,4);
     // Check if there is a promotion
     var promo = "";
+    var prmove;
     if(bestmove.length == 5) {
         promo = '='+bestmove[4].toUpperCase();
     }
@@ -193,41 +200,54 @@ var move_callback = function(bestmove){
         // Verify if it is a castling move
         if (bestmove == 'e1g1' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O');
+            console.log('Info: move O-O');
         }else if (bestmove == 'e1c1' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O-O');
+            console.log('Info: move O-O-O');
         }else if (bestmove == 'e8g8' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O');
+            console.log('Info: move O-O');
         }else if (bestmove == 'e8c8' && current_game.board.get(from).type == 'k'){
             ret = current_game.board.move('O-O-O');
+            console.log('Info: move O-O-O');
         }else if(current_game.board.get(from).type == 'p'){
             // Pawn moves
             // Verify if it is a en passant capture
             var fen = current_game.board.fen();
             var enpas = fen.split(" ")[3];
             if(current_game.board.get(to) == null && to != enpas){
-                ret = current_game.board.move(to + promo);
+                prmove = to + promo;
+                ret = current_game.board.move(prmove);
             }else{
-                ret = current_game.board.move(bestmove.slice(0,1) + 'x' + to + promo);
+                prmove = bestmove.slice(0,1) + 'x' + to + promo;
+                ret = current_game.board.move(prmove);
             }
+            console.log('Info: move ' + prmove);
         }else {
             // Other pieces
             if (current_game.board.get(to) == null) {
                 // Non-capture moves
-                ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + to);
+                prmove = current_game.board.get(from).type.toUpperCase() + to
+                ret = current_game.board.move(prmove);
                 if (ret == null) {
-                    ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + to);
+                    prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + to;
+                    ret = current_game.board.move(prmove);
                 }
+                console.log('Info: move ' + prmove);
             } else {
                 // Capture moves
-                ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + 'x' + to);
+                prmove = current_game.board.get(from).type.toUpperCase() + 'x' + to;
+                ret = current_game.board.move(prmove);
                 if (ret == null) {
-                    ret = current_game.board.move(current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to );
+                    prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to;
+                    ret = current_game.board.move(prmove);
                 }
+                console.log('Info: move ' + prmove);
             }
         }
         // Error handling
         if (ret == null) {
-            throw move_error;;
+            throw move_error;
         }
     }catch(err){
         console.log("Error: " + err);
@@ -270,6 +290,16 @@ var move_callback = function(bestmove){
                 next(result);
             });
         }
+        if(config.options.save_cpdata){
+            var fname = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
+            var csv = cpdata.join("\r\n");
+            fs.writeFile(fname, csv, function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                console.log("Info: csv saved "+fname);
+            });
+        }
     }else if(current_game.running == 1){
         // Callback to gameloop
         gameLoop();
@@ -288,7 +318,12 @@ function play(round){
     // Set Round
     current_game.current_round = round;
     // Set PGN headers
-    current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
+    if(sideswitch == 0) {
+        current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
+    }else{
+        current_game.board.header('White', p2.name, 'Black', p1.name, 'Date', today, 'Round', current_game.current_round.toString());
+        current_game.turn += 1;
+    }
     // Start the game loop
     gameLoop();
 }
@@ -297,6 +332,7 @@ function play(round){
 var chess = require('chess.js').Chess;
 var moment = require('moment');
 var fs = require('fs');
+//var csv = require('csv');
 // Date
 var date = moment();
 var today = date.format('DD-MM-YYYY');
@@ -305,6 +341,10 @@ var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 // Init vars
 var current_game;
 var round;
+var sideswitch = 0;
+var cpdata = new Array();
+cpdata[0] = ['w'];
+cpdata[1] = ['b'];
 // Create and init objects for players
 var p1 = Object.create(ai);
 var p2 = Object.create(ai);
