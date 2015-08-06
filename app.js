@@ -125,7 +125,7 @@ var ai = {
 
 };
 
-function createGame(p1, p2, config){
+function createGame(config){
     // Create game object and load data from config
     var game = {
         id : 0,
@@ -152,14 +152,8 @@ function createGame(p1, p2, config){
     game.wtime = config.game.wtime;
     game.inc = config.game.inc;
     game.movetime = config.game.movetime;
-    game.p1_name = config.p1.name;
-    game.p2_name = config.p2.name;
     game.mode = config.game.mode;
     return game;
-}
-
-function createTournament(){
-
 }
 
 function random (low, high) {
@@ -168,9 +162,9 @@ function random (low, high) {
 
 function gameLoop(){
     if(current_game.turn % 2 == 1){
-        p1.go(current_game, move_callback);
+        first.go(current_game, move_callback);
     }else{
-        p2.go(current_game, move_callback);
+        second.go(current_game, move_callback);
     }
 }
 
@@ -179,7 +173,25 @@ function next(result) {
     if(current_game.current_round < current_game.total_rounds){
         round = current_game.current_round + 1;
         if(sideswitch==1){sideswitch=0}else{sideswitch=1}
+        first = player_array[current_player];
+        second = player_array[current_opponent];
         play(round);
+    }else if(config.options.tournament_mode == true){
+        round = 1;
+        if(current_opponent == player_array.length - 1 && current_player + 1 <= player_array.length - 2){
+            current_player = current_player + 1;
+            current_opponent = current_player + 1;
+            first = player_array[current_player];
+            second = player_array[current_opponent];
+            play(round);
+        }else if(current_opponent != player_array.length - 1){
+            current_opponent = current_opponent + 1;
+            first = player_array[current_player];
+            second = player_array[current_opponent];
+            play(round);
+        }
+
+
     }
 }
 
@@ -222,6 +234,10 @@ var move_callback = function(bestmove){
                 prmove = bestmove.slice(0,1) + 'x' + to + promo;
                 ret = current_game.board.move(prmove);
             }
+            if(ret == null){
+                prmove = prmove + '+';
+                current_game.board.move(prmove);
+            }
             console.log('Info: move ' + prmove);
         }else {
             // Other pieces
@@ -233,7 +249,18 @@ var move_callback = function(bestmove){
                     prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + to;
                     ret = current_game.board.move(prmove);
                 }
-                console.log('Info: move ' + prmove);
+                if(ret == null){
+                    prmove = prmove + '+';
+                    ret = current_game.board.move(prmove);
+                }
+                if(ret == null){
+                    prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(1, 2) + to;
+                    ret = current_game.board.move(prmove);
+                }
+                if(ret == null){
+                    prmove = prmove + '+';
+                    ret = current_game.board.move(prmove);
+                }
             } else {
                 // Capture moves
                 prmove = current_game.board.get(from).type.toUpperCase() + 'x' + to;
@@ -242,8 +269,20 @@ var move_callback = function(bestmove){
                     prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(0, 1) + 'x' + to;
                     ret = current_game.board.move(prmove);
                 }
-                console.log('Info: move ' + prmove);
+                if(ret == null){
+                    prmove = prmove + '+';
+                    ret = current_game.board.move(prmove);
+                }
+                if(ret == null){
+                    prmove = current_game.board.get(from).type.toUpperCase() + bestmove.slice(1, 2) + 'x' + to;
+                    ret = current_game.board.move(prmove);
+                }
+                if(ret == null){
+                    prmove = prmove + '+';
+                    ret = current_game.board.move(prmove);
+                }
             }
+            console.log('Info: move ' + prmove);
         }
         // Error handling
         if (ret == null) {
@@ -280,24 +319,24 @@ var move_callback = function(bestmove){
         current_game.running = 0;
         // Save the PGN file
         if(config.options.save_pgn){
-            var fname = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
-            fs.writeFile(fname, current_game.board.pgn(), function(err) {
+            var fname_pgn = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
+            fs.writeFile(fname_pgn, current_game.board.pgn(), function(err) {
                 if(err) {
                     return console.log(err);
                 }
-                console.log("Info: pgn saved "+fname);
+                console.log("Info: pgn saved "+fname_pgn);
                 // To next game
                 next(result);
             });
         }
         if(config.options.save_cpdata){
-            var fname = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
+            var fname_csv = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
             var csv = cpdata.join("\r\n");
-            fs.writeFile(fname, csv, function(err) {
+            fs.writeFile(fname_csv, csv, function(err) {
                 if(err) {
                     return console.log(err);
                 }
-                console.log("Info: csv saved "+fname);
+                console.log("Info: csv saved "+fname_csv);
             });
         }
     }else if(current_game.running == 1){
@@ -308,7 +347,7 @@ var move_callback = function(bestmove){
 
 function play(round){
     // Create game object
-    current_game = createGame(p1, p2, config);
+    current_game = createGame(config);
     // Generate game ID
     current_game.id = random(1000,9999);
     // Create chess.js object
@@ -319,9 +358,9 @@ function play(round){
     current_game.current_round = round;
     // Set PGN headers
     if(sideswitch == 0) {
-        current_game.board.header('White', p1.name, 'Black', p2.name, 'Date', today, 'Round', current_game.current_round.toString());
+        current_game.board.header('White', first.name, 'Black', second.name, 'Date', today, 'Round', current_game.current_round.toString());
     }else{
-        current_game.board.header('White', p2.name, 'Black', p1.name, 'Date', today, 'Round', current_game.current_round.toString());
+        current_game.board.header('White', second.name, 'Black', first.name, 'Date', today, 'Round', current_game.current_round.toString());
         current_game.turn += 1;
     }
     // Start the game loop
@@ -339,18 +378,23 @@ var today = date.format('DD-MM-YYYY');
 // Load config JSON
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 // Init vars
-var current_game;
-var round;
+var current_game, first, second, round;
 var sideswitch = 0;
 var cpdata = new Array();
+var player_array = new Array();
+var current_player = 0;
+var current_opponent = 1;
+var players = config.options.players;
 cpdata[0] = ['w'];
 cpdata[1] = ['b'];
 // Create and init objects for players
-var p1 = Object.create(ai);
-var p2 = Object.create(ai);
-p1.path = config.p1.path;
-p2.path = config.p2.path;
-p1.name = config.p1.name;
-p2.name = config.p2.name;
+for(var i = 0;i < config.options.players.length; i++){
+    player_array[i] = Object.create(ai);
+    player_array[i].path = config[players[i]].path;
+    player_array[i].name = config[players[i]].name;
+}
 // Start it up!
+first = player_array[0];
+second = player_array[1];
 play(1);
+
