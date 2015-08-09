@@ -65,9 +65,7 @@ var ai = {
                 response = data.toString();
                 // Extract score data
                 if(response.indexOf("cp") > -1 && current_cp == undefined){
-                    var arr_response = response.split("\n");
-                    var response_part;
-
+                    arr_response = response.split("\n");
                     for(response_part in arr_response){
                         var arr_response_parts = arr_response[response_part].split(" ");
                         if(current_cp == undefined){
@@ -90,7 +88,13 @@ var ai = {
                 if(response.indexOf("bestmove") > -1){
                     // Get end time
                     end = new Date() - start;
+                    if(current_game.board.turn().indexOf("w") > -1) {
+                        timedata[0].push(end);
+                    }else{
+                        timedata[1].push(end);
+                    }
                     console.log('Info: turn ' + current_game.board.turn());
+                    // Update unused time
                     if(current_game.board.turn() == 'w' && current_game.mode.toString().indexOf("time") > -1){
                         current_game.wtime = current_game.wtime - end;
                         console.log('Info: wtime ' + current_game.wtime);
@@ -161,6 +165,7 @@ function random (low, high) {
 }
 
 function gameLoop(){
+    // Managing Turns
     if(current_game.turn % 2 == 1){
         first.go(current_game, move_callback);
     }else{
@@ -168,7 +173,7 @@ function gameLoop(){
     }
 }
 
-function next(result) {
+function next() {
     // To next round if still rounds to go
     if(current_game.current_round < current_game.total_rounds){
         round = current_game.current_round + 1;
@@ -177,6 +182,7 @@ function next(result) {
         second = player_array[current_opponent];
         play(round);
     }else if(config.options.tournament_mode == true){
+        // Reset to round one and move on to next player
         round = 1;
         if(current_opponent == player_array.length - 1 && current_player + 1 <= player_array.length - 2){
             current_player = current_player + 1;
@@ -319,7 +325,7 @@ var move_callback = function(bestmove){
         current_game.running = 0;
         // Save the PGN file
         if(config.options.save_pgn){
-            var fname_pgn = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
+            var fname_pgn = config.options.save_location + "/" + current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.pgn';
             fs.writeFile(fname_pgn, current_game.board.pgn(), function(err) {
                 if(err) {
                     return console.log(err);
@@ -329,14 +335,26 @@ var move_callback = function(bestmove){
                 next(result);
             });
         }
+        // Save CSV file with CP score data
         if(config.options.save_cpdata){
-            var fname_csv = current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
+            var fname_cp = config.options.save_location + "/cp" + current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
             var csv = cpdata.join("\r\n");
-            fs.writeFile(fname_csv, csv, function(err) {
+            fs.writeFile(fname_cp, csv, function(err) {
                 if(err) {
                     return console.log(err);
                 }
-                console.log("Info: csv saved "+fname_csv);
+                console.log("Info: csv saved "+fname_cp);
+            });
+        }
+        // Save CSV file with time data
+        if(config.options.save_timedata){
+            var fname_time = config.options.save_location + "/time" + current_game.gameName + '-' + date.format('DDMMYYYY') + '-' + current_game.current_round + '-' + current_game.id + '.csv';
+            var csv = timedata.join("\r\n");
+            fs.writeFile(fname_time, csv, function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                console.log("Info: csv saved "+fname_time);
             });
         }
     }else if(current_game.running == 1){
@@ -346,6 +364,13 @@ var move_callback = function(bestmove){
 };
 
 function play(round){
+    // Reset data arrays
+    cpdata = new Array();
+    timedata = new Array();
+    cpdata[0] = ['w'];
+    cpdata[1] = ['b'];
+    timedata[0] = ['w'];
+    timedata[1] = ['b'];
     // Create game object
     current_game = createGame(config);
     // Generate game ID
@@ -381,12 +406,15 @@ var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 var current_game, first, second, round;
 var sideswitch = 0;
 var cpdata = new Array();
+var timedata = new Array();
 var player_array = new Array();
 var current_player = 0;
 var current_opponent = 1;
 var players = config.options.players;
 cpdata[0] = ['w'];
 cpdata[1] = ['b'];
+timedata[0] = ['w'];
+timedata[1] = ['b'];
 // Create and init objects for players
 for(var i = 0;i < config.options.players.length; i++){
     player_array[i] = Object.create(ai);
@@ -396,5 +424,17 @@ for(var i = 0;i < config.options.players.length; i++){
 // Start it up!
 first = player_array[0];
 second = player_array[1];
-play(1);
+try {
+    // Check save location
+    stats = fs.lstatSync(config.options.save_location);
+    if (stats.isDirectory()) {
+        play(1);
+    }else{
+        console.log("Error: The given save location path is not a directory");
+    }
+}
+catch (e) {
+    console.log("Error: "+e);
+}
+
 
