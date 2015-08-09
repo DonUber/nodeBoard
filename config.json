@@ -1,5 +1,5 @@
-{ "p2": {
-  "name": "Jazz",
+{ "p3": {
+  "name": "UtopAI",
   "path": "/Users/danielkreiter/Documents/Development/Chess/UtopAI/src/utopai"
   },
 
@@ -8,24 +8,26 @@
     "path": "/Users/danielkreiter/Documents/Development/Chess/Engines/stockfish-5-mac/Mac/stockfish-5-sse42"
   },
 
-  "p3": {
-    "name": "Stockfish2",
-    "path": "/Users/danielkreiter/Documents/Development/Chess/Engines/stockfish-5-mac/Mac/stockfish-5-sse42"
+  "p2": {
+    "name": "Gull",
+    "path": "/Users/danielkreiter/Documents/Development/Chess/Engines/gull-1.2/gull"
   },
 
   "options": {
     "save_pgn": true,
     "save_cpdata": true,
-    "tournament_mode": true,
-    "players": ["p1", "p2", "p3"]
+    "save_timedata": true,
+    "tournament_mode": false,
+    "players": ["p1", "p2", "p3"],
+    "save_location": "/Users/danielkreiter/Documents/Development/Chess/data"
   },
 
   "game": {
-    "gameName": "Research",
-    "mode": "depth",
+    "gameName": "Testing",
+    "mode": "time",
     "total_rounds": 1,
-    "btime": 50000,
-    "wtime": 50000,
+    "btime": 100000,
+    "wtime": 100000,
     "movetime": 0,
     "inc": 0,
     "depth": 2
