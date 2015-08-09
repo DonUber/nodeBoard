@@ -48,6 +48,7 @@ var ai = {
             var response = "";
             var current_cp = undefined;
             // Write fen to UCI engine
+            child.stdin.write("uci\n");
             child.stdin.write("position fen " + current_game.board.fen() + "\n");
             // Get starting moment
             var start = new Date();
