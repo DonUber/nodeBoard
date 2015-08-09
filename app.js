@@ -401,7 +401,16 @@ var fs = require('fs');
 var date = moment();
 var today = date.format('DD-MM-YYYY');
 // Load config JSON
-var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+var config_path = "config.json";
+if(process.argv[2] != null){
+    config_path = process.argv[2];
+}
+try {
+    var config = JSON.parse(fs.readFileSync(config_path, 'utf8'));
+}catch(err){
+    console.log("Error: " + err);
+    process.exit(1);
+}
 // Init vars
 var current_game, first, second, round;
 var sideswitch = 0;
