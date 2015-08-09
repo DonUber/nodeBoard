@@ -88,7 +88,7 @@ var ai = {
                     }
                 }
                 // Check if there is already a bestmove in the data
-                if(response.indexOf("bestmove") > -1){
+                if(/(bestmove )\w+/.test(response)){
                     // Get end time
                     end = new Date() - start;
                     if(current_game.board.turn().indexOf("w") > -1) {
