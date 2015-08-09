@@ -47,23 +47,25 @@ var ai = {
             var child = require('child_process').spawn(this.path);
             var response = "";
             var current_cp = undefined;
+            var end,start;
             // Write fen to UCI engine
             child.stdin.write("uci\n");
-            child.stdin.write("position fen " + current_game.board.fen() + "\n");
-            // Get starting moment
-            var start = new Date();
-            var end;
-            // Send go command with parameters
-            if(current_game.mode.toString().indexOf("depth") > -1){
-                child.stdin.write("go depth " + current_game.depth + "\n");
-            }else if(current_game.mode.toString().indexOf("movetime") > -1){
-                child.stdin.write("go movetime " + current_game.movetime + "\n");
-            }else if(current_game.mode.toString().indexOf("time") > -1){
-                child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
-            }
             // Receive the returned data
             child.stdout.on('data', function(data) {
                 response = data.toString();
+                if(response.indexOf("uciok") > -1){
+                    child.stdin.write("position fen " + current_game.board.fen() + "\n");
+                    // Get starting moment
+                    start = new Date();
+                    // Send go command with parameters
+                    if(current_game.mode.toString().indexOf("depth") > -1){
+                        child.stdin.write("go depth " + current_game.depth + "\n");
+                    }else if(current_game.mode.toString().indexOf("movetime") > -1){
+                        child.stdin.write("go movetime " + current_game.movetime + "\n");
+                    }else if(current_game.mode.toString().indexOf("time") > -1){
+                        child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
+                    }
+                }
                 // Extract score data
                 if(response.indexOf("cp") > -1 && current_cp == undefined){
                     arr_response = response.split("\n");
@@ -302,7 +304,7 @@ var move_callback = function(bestmove){
     current_game.turn = current_game.turn + 1;
     console.log('Info: fen ' + current_game.board.fen());
     // Check if and how the game ended and add it to PGN header
-    if(current_game.board.game_over() == true){
+    if(current_game.board.game_over() == true || current_game.btime <= 0 || current_game.wtime <= 0){
         var result = 'd';
         if(current_game.board.in_checkmate() == true && current_game.board.turn() == 'b'){
             console.log("Info: end checkmate w wins");
@@ -321,6 +323,14 @@ var move_callback = function(bestmove){
         }else if(current_game.board.in_threefold_repetition() == true){
             console.log("Info: end threefold");
             current_game.board.header('Result', '1/2-1/2');
+        }else if(current_game.btime <= 0 ){
+            console.log("Info: end notime w wins");
+            result = 'ww';
+            current_game.board.header('Result', '1-0');
+        }else if(current_game.wtime <= 0 ){
+            console.log("Info: end notime b wins");
+            result = 'bw';
+            current_game.board.header('Result', '0-1');
         }
         // Stop the game
         current_game.running = 0;
