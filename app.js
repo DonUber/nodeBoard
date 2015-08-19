@@ -64,7 +64,6 @@ var ai = {
             }
             // Receive the returned data
             child.stdout.on('data', function(data) {
-                console.log(response);
                 response = data.toString();
                 //console.log(response)
                 if(response.indexOf("uciok") > -1){
