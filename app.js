@@ -48,23 +48,27 @@ var ai = {
             var response = "";
             var current_cp = undefined;
             var end,start;
+            var uciok_flag = 0;
             // Write fen to UCI engine
             child.stdin.write("uci\n");
+            child.stdin.write("position fen " + current_game.board.fen() + "\n");
+            // Get starting moment
+            start = new Date();
+            // Send go command with parameters
+            if(current_game.mode.toString().indexOf("depth") > -1){
+                child.stdin.write("go depth " + current_game.depth + "\n");
+            }else if(current_game.mode.toString().indexOf("movetime") > -1){
+                child.stdin.write("go movetime " + current_game.movetime + "\n");
+            }else if(current_game.mode.toString().indexOf("time") > -1){
+                child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
+            }
             // Receive the returned data
             child.stdout.on('data', function(data) {
+                console.log(response);
                 response = data.toString();
+                //console.log(response)
                 if(response.indexOf("uciok") > -1){
-                    child.stdin.write("position fen " + current_game.board.fen() + "\n");
-                    // Get starting moment
-                    start = new Date();
-                    // Send go command with parameters
-                    if(current_game.mode.toString().indexOf("depth") > -1){
-                        child.stdin.write("go depth " + current_game.depth + "\n");
-                    }else if(current_game.mode.toString().indexOf("movetime") > -1){
-                        child.stdin.write("go movetime " + current_game.movetime + "\n");
-                    }else if(current_game.mode.toString().indexOf("time") > -1){
-                        child.stdin.write("go btime " + current_game.btime + " wtime " + current_game.wtime + "\n");
-                    }
+
                 }
                 // Extract score data
                 if(response.indexOf("cp") > -1 && current_cp == undefined){
@@ -88,33 +92,34 @@ var ai = {
                     }
                 }
                 // Check if there is already a bestmove in the data
-                if(/(bestmove )\w+/.test(response)){
+                if(/(bestmove )\w+/.test(response)) {
                     // Get end time
                     end = new Date() - start;
-                    if(current_game.board.turn().indexOf("w") > -1) {
+                    if (current_game.board.turn().indexOf("w") > -1) {
                         timedata[0].push(end);
-                    }else{
+                    } else {
                         timedata[1].push(end);
                     }
                     console.log('Info: turn ' + current_game.board.turn());
                     // Update unused time
-                    if(current_game.board.turn() == 'w' && current_game.mode.toString().indexOf("time") > -1){
-                        current_game.wtime = current_game.wtime - end;
+                    if (current_game.board.turn() == 'w' && current_game.mode.toString().indexOf("time") > -1) {
+                        current_game.wtime = current_game.wtime - end + config.game.inc;
                         console.log('Info: wtime ' + current_game.wtime);
-                    }else if(current_game.board.turn() == 'b' && current_game.mode.toString().indexOf("time") > -1){
-                        current_game.btime = current_game.btime - end;
+                    } else if (current_game.board.turn() == 'b' && current_game.mode.toString().indexOf("time") > -1) {
+                        current_game.btime = current_game.btime - end + config.game.inc;
                         console.log('Info: btime ' + current_game.btime);
                     }
                     //Extract bestmove from the data
                     var arr_response = response.split("\n");
                     var response_part;
 
-                    for(response_part in arr_response){
+                    for (response_part in arr_response) {
                         var arr_response_parts = arr_response[response_part].split(" ");
-                        if(arr_response_parts[0].indexOf("bestmove") > -1){
-                            try{
+                        if (arr_response_parts[0].indexOf("bestmove") > -1) {
+                            try {
                                 child.stdin.write("quit\n");
-                            }catch(err){}
+                            } catch (err) {
+                            }
                             // Callback
                             callback(arr_response_parts[1]);
                             return 1;
@@ -129,7 +134,6 @@ var ai = {
             console.log("Error: " + err);
         }
     }
-
 };
 
 function createGame(config){
@@ -164,7 +168,12 @@ function createGame(config){
 }
 
 function random (low, high) {
-    return Math.floor(Math.random() * (high - low + 1) + low);
+    var id = Math.floor(Math.random() * (high - low + 1) + low);
+    while(used_ids.indexOf(id) > -1){
+        id = Math.floor(Math.random() * (high - low + 1) + low);
+    }
+    used_ids.push(id);
+    return id;
 }
 
 function gameLoop(){
@@ -206,6 +215,7 @@ function next() {
 
 var move_callback = function(bestmove){
     // Extract info from bestmove response
+    bestmove = bestmove.replace("-", "");
     console.log('Info: move ' + bestmove);
     var from  = bestmove.slice(0,2);
     var to = bestmove.slice(2,4);
@@ -424,6 +434,7 @@ try {
 }
 // Init vars
 var current_game, first, second, round;
+var used_ids = new Array();
 var sideswitch = 0;
 var cpdata = new Array();
 var timedata = new Array();
