@@ -78,7 +78,7 @@ var ai = {
                             for(var i =0; i < arr_response_parts.length; i++){
                                 if(arr_response_parts[i].indexOf("cp") > -1){
                                     current_cp = arr_response_parts[i+1];
-                                    if(current_cp == undefined || current_cp == "undefined") {
+                                    if(current_cp != undefined || current_cp != "undefined") {
                                         console.log('Info: cp ' + current_game.board.turn() + ' ' + current_cp);
                                         if (current_game.board.turn().indexOf("w") > -1) {
                                             cpdata[0].push(current_cp);
