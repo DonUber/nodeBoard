@@ -127,7 +127,7 @@ var ai = {
                 }
             });
             child.stderr.on('data', function(data) {
-                console.log("Error: " + data);
+                //console.log("Error: " + data);
             });
         }catch(err){
             console.log("Error: " + err);
