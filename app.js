@@ -70,8 +70,11 @@ var ai = {
 
                 }
                 // Extract score data
-                if(response.indexOf("cp") > -1 && current_cp == undefined){
+                if(response.indexOf(" cp ") > -1 && current_cp == undefined){
                     arr_response = response.split("\n");
+                    //console.log("Start reponse part");
+                    //console.log(arr_response);
+                    //console.log("End reponse part");
                     for(response_part in arr_response){
                         var arr_response_parts = arr_response[response_part].split(" ");
                         if(current_cp == undefined){
@@ -112,8 +115,10 @@ var ai = {
                     }
                     //Extract bestmove from the data
                     var arr_response = response.split("\n");
+                    //console.log("Start reponse part");
+                    //console.log(arr_response);
+                    //console.log("End reponse part");
                     var response_part;
-
                     for (response_part in arr_response) {
                         var arr_response_parts = arr_response[response_part].split(" ");
                         if (arr_response_parts[0].indexOf("bestmove") > -1) {
@@ -122,7 +127,11 @@ var ai = {
                             } catch (err) {
                             }
                             // Callback
-                            callback(arr_response_parts[1]);
+                            var move_str = arr_response_parts[1];
+                            if(move_str.length < 4) {
+                                move_str = arr_response[response_part + 1].split(" ")[0];
+                            }
+                            callback(move_str);
                             return 1;
                         }
                     }
