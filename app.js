@@ -232,6 +232,7 @@ var move_callback = function(bestmove){
     // Check if there is a promotion
     var promo = "";
     var prmove;
+    var prmove_new;
     if(bestmove.length == 5) {
         promo = '='+bestmove[4].toUpperCase();
     }
@@ -264,8 +265,12 @@ var move_callback = function(bestmove){
                 ret = current_game.board.move(prmove);
             }
             if(ret == null){
-                prmove = prmove + '+';
-                current_game.board.move(prmove);
+                prmove_new = prmove + '+';
+                current_game.board.move(prmove_new);
+            }
+            if(ret == null){
+                prmove_new = prmove + '#';
+                current_game.board.move(prmove_new);
             }
             console.log('Info: move ' + prmove);
         }else {
